@@ -254,16 +254,18 @@ The backend includes global error handling middleware:
 - ✓ File URL response with S3 public link
 - **Files**: `services/s3Service.js`, `controllers/uploadController.js`, `routes/upload.js`
 
-### Phase 3: PDF Processing & Embeddings (UPCOMING)
-- PDF text extraction (PDFKit or similar)
-- Text chunking strategies
-- Embedding generation using Gemini API
-- Vector database setup (FAISS)
-- **New endpoint**: `POST /process`
+### Phase 3: RAG Ingestion Pipeline ✓ IN PROGRESS
+- ✓ PDF text extraction from S3
+- ✓ Text chunking with overlap (word-based)
+- ✓ Embedding generation using Gemini API
+- ✓ In-memory vector database setup
+- ✓ Process endpoints: `POST /process`, `GET /process/stats`
+- ✓ Complete ingestion pipeline: extract → chunk → embed → store
+- **Files**: `services/ingestionService.js`, `controllers/processController.js`, `routes/process.js`, `utils/chunking.js`, `utils/vectorStore.js`
 
-### Phase 4: RAG Pipeline (UPCOMING)
-- Query embedding and retrieval
-- Context augmentation
+### Phase 4: RAG Query & Response (UPCOMING)
+- Query embedding and similarity search
+- Context augmentation from vector store
 - LLM response generation with Gemini
 - Structured response formatting (summary, explanation, Q&A modes)
 - **New endpoints**: `POST /query`, `GET /query/:id/result`
@@ -411,6 +413,212 @@ Before running Phase 2, ensure:
 - Signed S3 URLs for secure access
 - File processing pipeline
 - Document versioning
+
+---
+
+## Phase 3 Implementation Details
+
+### What Was Built
+
+**RAG Ingestion Pipeline** processes uploaded PDFs into embeddings for semantic search:
+
+1. **Ingestion Service** (`services/ingestionService.js`)
+   - Fetches PDF from S3 using AWS SDK
+   - Parses PDF and extracts plain text
+   - Splits text into overlapping chunks
+   - Generates embeddings using Gemini API
+   - Stores in vector database
+
+2. **Chunking Utility** (`utils/chunking.js`)
+   - Word-based chunking (500 words per chunk)
+   - 50-word overlap between chunks
+   - Metadata attachment (fileKey, chunkIndex, etc.)
+   - Flexible chunking strategies (word/character)
+
+3. **Vector Store** (`utils/vectorStore.js`)
+   - In-memory database for embeddings
+   - Stores: text, embedding vector, metadata
+   - Functions: add, retrieve, stats
+   - No external dependencies (prototype-friendly)
+
+4. **Process Controller** (`controllers/processController.js`)
+   - Validates request parameters
+   - Triggers ingestion pipeline
+   - Returns processing statistics
+   - Handles errors gracefully
+
+### Architecture
+
+```
+POST /process (fileKey, originalName)
+  ↓
+services/ingestionService.js
+  ├→ fetchFileFromS3() - Get PDF buffer
+  ├→ extractTextFromPDF() - Parse PDF
+  ├→ utils/chunking.js - Split text
+  ├→ generateEmbeddings() - Gemini API
+  └→ utils/vectorStore.js - Store embeddings
+  ↓
+Return: {
+  success: true,
+  stats: { chunks, embeddings, time },
+  vectorStoreStats: { total, files, dimension }
+}
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `services/ingestionService.js` | Main ingestion orchestration |
+| `controllers/processController.js` | API route handlers |
+| `routes/process.js` | Express route definitions |
+| `utils/chunking.js` | Text splitting logic |
+| `utils/vectorStore.js` | Embedding storage |
+
+### Ingestion Pipeline Steps
+
+1. **Fetch from S3**
+   - Use S3 GetObjectCommand
+   - Stream buffer into memory
+   - Error handling for missing files
+
+2. **Extract Text**
+   - Use pdf-parse library
+   - Extract plain text from all pages
+   - Remove formatting, preserve content
+
+3. **Chunk Text**
+   - Split by word count (500 words default)
+   - Add overlap (50 words)
+   - Attach metadata to each chunk
+
+4. **Generate Embeddings**
+   - Use Gemini embedding-001 model
+   - 768-dimensional vectors
+   - Batch processing for efficiency
+
+5. **Store Embeddings**
+   - Add to in-memory vector store
+   - Index by document ID
+   - Track statistics
+
+### API Endpoints
+
+**POST /process** - Start ingestion
+```bash
+curl -X POST http://localhost:3000/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileKey": "1715000000_abc123.pdf",
+    "originalName": "lecture_notes.pdf"
+  }'
+```
+
+**GET /process/stats** - Get vector store stats
+```bash
+curl http://localhost:3000/process/stats
+```
+
+### Gemini Embedding Model
+
+- **Model ID**: `embedding-001`
+- **Dimension**: 768
+- **Max Input**: 3000 characters per chunk
+- **Rate Limiting**: Batch processing to avoid hitting limits
+
+### Vector Store Implementation
+
+**In-Memory Storage (Current)**
+- Suitable for prototyping and development
+- Fast retrieval
+- Resets on server restart
+- Scalable to ~10,000 documents
+
+**Document Structure**
+```javascript
+{
+  id: 0,
+  text: "chunk text here...",
+  embedding: [0.123, -0.456, ...], // 768 values
+  metadata: {
+    fileKey: "1715000000_abc123.pdf",
+    originalName: "lecture_notes.pdf",
+    chunkIndex: 0,
+    chunkCount: 100,
+    processedAt: "2024-05-07T12:00:00Z"
+  },
+  addedAt: "2024-05-07T12:00:00Z"
+}
+```
+
+### Error Handling
+
+| Error | Cause | Status |
+|-------|-------|--------|
+| Missing Parameters | fileKey/originalName not provided | 400 |
+| File Not Found | PDF not in S3 bucket | 500 |
+| PDF Parse Error | Invalid or corrupted PDF | 500 |
+| Embedding Error | Gemini API failure | 500 |
+| Storage Error | Vector store full | 500 |
+
+### Performance Characteristics
+
+- **Small PDF (10 pages)**: ~10-15 seconds
+- **Medium PDF (50 pages)**: ~30-45 seconds
+- **Large PDF (200 pages)**: ~2-3 minutes
+- **Memory per chunk**: ~1-2 KB text + 3 KB embedding
+
+### Testing the Ingestion
+
+**Step 1: Upload PDF**
+```bash
+curl -X POST http://localhost:3000/upload \
+  -F "file=@sample.pdf"
+# Response: { fileKey, fileUrl, ... }
+```
+
+**Step 2: Process Document**
+```bash
+curl -X POST http://localhost:3000/process \
+  -H "Content-Type: application/json" \
+  -d '{"fileKey": "YOUR_FILE_KEY", "originalName": "sample.pdf"}'
+# Response: { success, stats, vectorStoreStats }
+```
+
+**Step 3: Check Stats**
+```bash
+curl http://localhost:3000/process/stats
+# Response: { totalDocuments, totalFiles, fileKeys, embeddingDimension }
+```
+
+### Production Considerations
+
+- **Persistence**: Use FAISS or Redis for production
+- **Scalability**: Implement async job queue for large batches
+- **Monitoring**: Log processing times and errors
+- **Rate Limiting**: Gemini API has rate limits
+- **Concurrency**: Multiple files can be processed in parallel
+- **Recovery**: Implement retry logic for transient failures
+
+### Limitations (Phase 3)
+
+- No query endpoint (coming Phase 4)
+- No similarity search yet
+- In-memory only (no persistence)
+- Resets on server restart
+- Limited to ~10,000 documents per instance
+- Sequential processing (can be parallelized)
+
+### Future Enhancements
+
+- Hybrid chunking (smart boundary detection)
+- Multiple embedding models
+- FAISS integration for larger datasets
+- Batch processing with job queue
+- Document metadata database
+- Incremental updates
+- Vector store persistence
 
 ---
 

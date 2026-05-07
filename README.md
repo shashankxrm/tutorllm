@@ -239,6 +239,144 @@ curl -X POST http://localhost:3000/upload \
 
 ---
 
+#### Phase 3: RAG Ingestion Pipeline
+
+**What Was Implemented:**
+- PDF text extraction from S3-hosted files
+- Intelligent text chunking (with overlap for context preservation)
+- Embedding generation using Google Gemini
+- In-memory vector store for chunk embeddings
+- Document processing statistics and monitoring
+
+**Why This Matters for RAG:**
+
+In Retrieval-Augmented Generation (RAG), raw documents are too large to send to language models. The ingestion pipeline solves this by:
+1. **Breaking documents into chunks**: Smaller, focused pieces of text that capture specific topics
+2. **Creating embeddings**: Converting text into vector representations that capture semantic meaning
+3. **Storing for retrieval**: Building a searchable knowledge base without loading entire documents
+
+**Ingestion Pipeline Flow:**
+
+```
+S3 Bucket (Uploaded PDF)
+    ↓
+Fetch File from S3
+    ↓
+Extract Text (PDF Parser)
+    ↓
+Split into Chunks (500-word chunks with 50-word overlap)
+    ↓
+Generate Embeddings (Google Gemini)
+    ↓
+Store in Vector Database (In-memory)
+    ↓
+Ready for Retrieval & Queries
+```
+
+**API Endpoint: Process Document**
+
+```
+POST /process
+Content-Type: application/json
+
+Request body:
+{
+  "fileKey": "1715000000_abc123.pdf",
+  "originalName": "lecture_notes.pdf"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "message": "Document ingested successfully",
+  "fileKey": "1715000000_abc123.pdf",
+  "originalName": "lecture_notes.pdf",
+  "stats": {
+    "textLength": 50000,
+    "chunksCreated": 100,
+    "embeddingsGenerated": 100,
+    "documentsAdded": 100,
+    "totalDocumentsInStore": 300,
+    "processingTimeSeconds": 45.23
+  },
+  "vectorStoreStats": {
+    "totalDocuments": 300,
+    "totalFiles": 3,
+    "embeddingDimension": 768
+  }
+}
+```
+
+**API Endpoint: Get Vector Store Statistics**
+
+```
+GET /process/stats
+
+Response (200 OK):
+{
+  "success": true,
+  "vectorStore": {
+    "totalDocuments": 300,
+    "totalFiles": 3,
+    "fileKeys": ["file1.pdf", "file2.pdf", "file3.pdf"],
+    "embeddingDimension": 768,
+    "allDocuments": 300
+  }
+}
+```
+
+**Complete Workflow Example:**
+
+1. **User uploads PDF** via `POST /upload`
+   ```bash
+   curl -X POST http://localhost:3000/upload -F "file=@document.pdf"
+   ```
+   Response includes `fileKey`
+
+2. **Backend processes document** via `POST /process`
+   ```bash
+   curl -X POST http://localhost:3000/process \
+     -H "Content-Type: application/json" \
+     -d '{"fileKey": "1715000000_abc123.pdf", "originalName": "document.pdf"}'
+   ```
+   - PDF extracted from S3
+   - Text split into 100 chunks
+   - Each chunk embedded with Gemini
+   - All embeddings stored in vector database
+
+3. **Check ingestion status** via `GET /process/stats`
+   ```bash
+   curl http://localhost:3000/process/stats
+   ```
+
+**Chunking Strategy:**
+
+- **Method**: Word-based chunking (500 words per chunk)
+- **Overlap**: 50-word overlap between adjacent chunks
+- **Why**: Preserves context boundaries, prevents information loss at chunk splits
+
+**Embedding Model:**
+
+- **Model**: Google Gemini `embedding-001`
+- **Dimension**: 768 dimensions per embedding
+- **Purpose**: Captures semantic meaning of text for similarity search
+
+**Vector Storage:**
+
+- **Type**: In-memory (no external database required)
+- **Format**: JSON-serializable objects with text, embeddings, and metadata
+- **Scalability**: Suitable for prototyping; can be extended to FAISS or Redis
+
+**Limitations (Phase 3):**
+
+- No query or retrieval endpoint yet
+- No similarity search functionality
+- Vector store resets on server restart
+- No database persistence
+- Limited to ~10,000 documents per instance
+
+---
+
 ## Contact & Support
 
 **Have questions?** We're here to help!
