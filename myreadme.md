@@ -244,31 +244,173 @@ The backend includes global error handling middleware:
 - ✓ Error handling middleware
 - ✓ Project structure
 
-### Phase 2: PDF Processing & Embeddings (UPCOMING)
+### Phase 2: File Upload & S3 Integration ✓ IN PROGRESS
+- ✓ Multer middleware setup for file uploads
+- ✓ AWS S3 client configuration
+- ✓ File validation (PDF only, max 50MB)
+- ✓ Unique filename generation to prevent collisions
+- ✓ Upload endpoint: `POST /upload`
+- ✓ S3 integration with proper error handling
+- ✓ File URL response with S3 public link
+- **Files**: `services/s3Service.js`, `controllers/uploadController.js`, `routes/upload.js`
+
+### Phase 3: PDF Processing & Embeddings (UPCOMING)
 - PDF text extraction (PDFKit or similar)
 - Text chunking strategies
 - Embedding generation using Gemini API
 - Vector database setup (FAISS)
-- **New endpoints**: `POST /upload`, `POST /process`
+- **New endpoint**: `POST /process`
 
-### Phase 3: RAG Pipeline (UPCOMING)
+### Phase 4: RAG Pipeline (UPCOMING)
 - Query embedding and retrieval
 - Context augmentation
 - LLM response generation with Gemini
 - Structured response formatting (summary, explanation, Q&A modes)
 - **New endpoints**: `POST /query`, `GET /query/:id/result`
 
-### Phase 4: AWS Integration (UPCOMING)
-- S3 bucket configuration and PDF upload
-- IAM roles and permissions setup
-- S3 file lifecycle management
-- **Enhanced**: `/upload` endpoint with S3 storage
-
 ### Phase 5: Deployment (UPCOMING)
 - Dockerfile and docker-compose setup
 - AWS EC2 instance configuration
 - Environment-specific deployments (dev, staging, production)
 - CI/CD pipeline (GitHub Actions or similar)
+
+---
+
+## Phase 2 Implementation Details
+
+### What Was Built
+
+**File Upload & S3 Integration** adds secure PDF file storage to the backend:
+
+1. **Multer Middleware** (`routes/upload.js`)
+   - Handles multipart/form-data requests
+   - Stores files in memory before S3 upload
+   - File size limit: 50MB
+   - Field name: "file"
+
+2. **S3 Service** (`services/s3Service.js`)
+   - AWS SDK v3 S3Client initialization
+   - Credentials from environment variables
+   - Async file upload with error handling
+   - Returns public S3 URL
+
+3. **Upload Controller** (`controllers/uploadController.js`)
+   - File type validation (PDF only)
+   - File size validation
+   - Unique filename generation (timestamp_randomId.pdf)
+   - Error responses for invalid files
+
+### Architecture
+
+```
+Client → POST /upload (multipart/form-data)
+  ↓
+routes/upload.js (multer middleware)
+  ↓
+uploadController.js (validation)
+  ↓
+services/s3Service.js (AWS SDK)
+  ↓
+AWS S3 Bucket
+  ↓
+Return: { fileUrl, fileKey, originalName, fileSize }
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `services/s3Service.js` | AWS S3 client and PutObjectCommand |
+| `controllers/uploadController.js` | File validation and business logic |
+| `routes/upload.js` | Express route and multer setup |
+| `routes/index.js` | Mount upload router at `/upload` |
+
+### Error Handling
+
+| Error | Status | Cause |
+|-------|--------|-------|
+| Missing File | 400 | No file in request |
+| Invalid Type | 400 | File is not PDF |
+| File Too Large | 400 | Size exceeds 50MB |
+| Upload Failed | 500 | S3 upload error |
+
+### Testing the Implementation
+
+**Using cURL:**
+```bash
+curl -X POST http://localhost:3000/upload \
+  -F "file=@/path/to/your/file.pdf"
+```
+
+**Using Postman:**
+1. POST to `http://localhost:3000/upload`
+2. Body → form-data
+3. Key: "file", Type: "File"
+4. Select PDF file
+5. Send
+
+**Using Node.js/JavaScript:**
+```javascript
+const formData = new FormData();
+const file = new File([pdfBlob], "document.pdf", { type: "application/pdf" });
+formData.append("file", file);
+
+const response = await fetch("http://localhost:3000/upload", {
+  method: "POST",
+  body: formData,
+});
+
+const data = await response.json();
+console.log(data.fileUrl);
+```
+
+### AWS Configuration Required
+
+Before running Phase 2, ensure:
+
+1. **AWS IAM User created** with programmatic access
+2. **S3 bucket created** in your specified region
+3. **IAM permissions** granted:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "s3:PutObject",
+           "s3:GetObject",
+           "s3:DeleteObject"
+         ],
+         "Resource": "arn:aws:s3:::your-bucket-name/*"
+       }
+     ]
+   }
+   ```
+4. **.env file** updated with:
+   ```
+   AWS_ACCESS_KEY=your_iam_access_key
+   AWS_SECRET_KEY=your_iam_secret_key
+   AWS_REGION=us-east-1
+   S3_BUCKET_NAME=your_bucket_name
+   ```
+
+### Production Considerations
+
+- **File Size Limit**: Currently 50MB. Adjust in multer config if needed
+- **File Type Validation**: Currently PDF only. Can extend in `uploadController.js`
+- **Filename Collision**: Unique filenames prevent overwrites (safe)
+- **Error Logging**: All S3 errors logged to console for debugging
+- **CORS**: May need to configure for frontend requests
+- **Authentication**: Not implemented yet (coming in later phases)
+
+### Future Enhancements (Phase 3+)
+
+- File metadata database (store fileKey, uploadedAt, userId, etc.)
+- File listing/deletion endpoints
+- Signed S3 URLs for secure access
+- File processing pipeline
+- Document versioning
 
 ---
 

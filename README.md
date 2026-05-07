@@ -153,6 +153,92 @@ Yes. You can cancel your subscription anytime without penalties. Your documents 
 
 ---
 
+## For Developers
+
+### Backend API Documentation
+
+This section documents the backend APIs for developers and integration partners.
+
+#### Phase 2: File Upload & S3 Integration
+
+**What Was Implemented:**
+- PDF file upload endpoint with validation
+- Amazon S3 integration for secure, scalable file storage
+- Automatic filename generation to prevent collisions
+- File size validation (up to 50MB)
+- MIME type validation (PDF only)
+
+**Why S3 Instead of Local Storage:**
+- **Scalability**: S3 handles unlimited storage without server constraints
+- **Reliability**: Automatic failover, redundancy, and backups
+- **Cost-Effective**: Pay only for what you use
+- **Security**: Built-in encryption and access controls
+- **Performance**: Distributed global infrastructure ensures fast access
+
+**Upload Flow:**
+1. Client sends HTTP POST request with PDF file
+2. Server receives file using multer (in-memory)
+3. File is validated:
+   - Type must be PDF (application/pdf)
+   - Size must be ≤ 50MB
+4. Unique filename is generated (timestamp + random ID)
+5. File is uploaded to AWS S3 bucket
+6. Server returns S3 file URL and key
+7. File is immediately accessible globally via HTTPS
+
+**API Endpoint: Upload PDF**
+
+```
+POST /upload
+Content-Type: multipart/form-data
+
+Field: "file" (Binary PDF file)
+
+Response (200 OK):
+{
+  "message": "File uploaded successfully",
+  "fileUrl": "https://your-bucket.s3.us-east-1.amazonaws.com/1715000000_abc123.pdf",
+  "fileKey": "1715000000_abc123.pdf",
+  "originalName": "lecture_notes.pdf",
+  "fileSize": 2048576,
+  "uploadedAt": "2024-05-07T12:00:00.000Z"
+}
+
+Error Response (400):
+{
+  "error": "Invalid File Type",
+  "message": "Only PDF files are allowed. Please upload a PDF file."
+}
+```
+
+**Testing with cURL:**
+```bash
+curl -X POST http://localhost:3000/upload \
+  -F "file=@/path/to/your/file.pdf"
+```
+
+**Testing with Postman:**
+1. Create new POST request to `http://localhost:3000/upload`
+2. Go to "Body" tab
+3. Select "form-data"
+4. Add key "file" with type "File"
+5. Click "Select Files" and choose a PDF
+6. Click "Send"
+7. You'll receive the file URL and details in response
+
+**Environment Variables Required:**
+- `AWS_ACCESS_KEY` - Your AWS IAM access key
+- `AWS_SECRET_KEY` - Your AWS IAM secret key
+- `AWS_REGION` - AWS region (e.g., us-east-1)
+- `S3_BUCKET_NAME` - Your S3 bucket name
+
+**Limitations:**
+- Maximum file size: 50MB
+- Accepted format: PDF only
+- Files are stored permanently in S3 (no automatic cleanup)
+
+---
+
 ## Contact & Support
 
 **Have questions?** We're here to help!
