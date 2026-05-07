@@ -1,0 +1,24 @@
+{
+  "name": "tutorllm",
+  "version": "1.0.0",
+  "description": "AI Study Assistant - Production-style RAG application backend",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "RAG",
+    "AI",
+    "LLM",
+    "LangChain",
+    "Gemini"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  }
+}
