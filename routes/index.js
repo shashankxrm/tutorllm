@@ -2,6 +2,7 @@ import express from 'express';
 import { healthCheck } from '../controllers/healthController.js';
 import uploadRoutes from './upload.js';
 import processRoutes from './process.js';
+import queryRoutes from './query.js';
 
 const router = express.Router();
 
@@ -24,5 +25,12 @@ router.use('/upload', uploadRoutes);
  * GET /process/stats - Get vector store statistics
  */
 router.use('/process', processRoutes);
+
+/**
+ * Query Routes (RAG Retrieval + Generation)
+ * POST /query - Process query with similarity search and LLM generation
+ * GET /query/stats - Get vector store statistics
+ */
+router.use('/query', queryRoutes);
 
 export default router;
