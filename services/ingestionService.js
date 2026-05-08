@@ -212,7 +212,22 @@ export const getVectorStoreStats = () => {
   };
 };
 
+/**
+ * Get stored chunks without embedding vectors for debugging/logging
+ *
+ * @returns {Array<Object>} - Stored chunks with text and metadata
+ */
+export const getStoredChunks = () => {
+  return vectorStore.getAllDocuments().map((document) => ({
+    id: document.id,
+    text: document.text,
+    metadata: document.metadata,
+    addedAt: document.addedAt,
+  }));
+};
+
 export default {
   ingestDocument,
   getVectorStoreStats,
+  getStoredChunks,
 };

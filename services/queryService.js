@@ -59,7 +59,7 @@ const generateResponse = async (prompt) => {
     console.log('Generating response with Gemini LLM...');
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash', // Use Gemini for text generation
+      model: 'gemini-2.5-flash', // Use Gemini for text generation
     });
 
     const result = await model.generateContent(prompt);

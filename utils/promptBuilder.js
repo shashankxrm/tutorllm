@@ -9,7 +9,7 @@
  * @param {Array<Object>} chunks - Retrieved chunks from vector store
  * @returns {string} Formatted context string
  */
-function buildContext(chunks) {
+export function buildContext(chunks) {
   if (!chunks || chunks.length === 0) {
     return '';
   }
@@ -28,7 +28,7 @@ function buildContext(chunks) {
  * @param {string} mode - Query mode: 'summary' | 'explain' | 'questions'
  * @returns {string} Mode-specific instruction
  */
-function getModeInstruction(mode) {
+export function getModeInstruction(mode) {
   const instructions = {
     summary: `Please summarize the provided content clearly and concisely using bullet points. Focus on key takeaways and main concepts.`,
 
@@ -48,7 +48,7 @@ function getModeInstruction(mode) {
  * @param {string} mode - Response mode: 'summary' | 'explain' | 'questions'
  * @returns {string} Complete prompt ready for LLM
  */
-function buildPrompt(chunks, query, mode = 'summary') {
+export function buildPrompt(chunks, query, mode = 'summary') {
   if (!chunks || chunks.length === 0) {
     return `User Query: ${query}\n\nNo relevant content found in the document database.`;
   }
@@ -77,7 +77,7 @@ RESPONSE:`;
   return prompt;
 }
 
-module.exports = {
+export default {
   buildPrompt,
   getModeInstruction,
   buildContext,

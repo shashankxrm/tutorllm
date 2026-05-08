@@ -1,4 +1,8 @@
-import { ingestDocument, getVectorStoreStats } from '../services/ingestionService.js';
+import {
+  ingestDocument,
+  getStoredChunks,
+  getVectorStoreStats,
+} from '../services/ingestionService.js';
 
 /**
  * Process Controller
@@ -50,6 +54,23 @@ export const processDocument = async (req, res) => {
 export const getStats = async (req, res) => {
   try {
     const stats = getVectorStoreStats();
+    const chunks = getStoredChunks();
+
+    console.log('\n=== Stored Chunks ===');
+
+    if (chunks.length === 0) {
+      console.log('No chunks stored yet.');
+    } else {
+      chunks.forEach((chunk) => {
+        console.log(
+          `\n[Chunk ${chunk.metadata.chunkIndex + 1}/${chunk.metadata.chunkCount}] ` +
+            `id=${chunk.id}, file=${chunk.metadata.originalName}, chars=${chunk.text.length}`
+        );
+        console.log(chunk.text);
+      });
+    }
+
+    console.log('=== End Stored Chunks ===\n');
 
     return res.status(200).json({
       success: true,

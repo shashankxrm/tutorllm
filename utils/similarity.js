@@ -11,7 +11,7 @@
  * @param {Array<number>} vec2 - Second embedding vector
  * @returns {number} Cosine similarity score between -1 and 1
  */
-function cosineSimilarity(vec1, vec2) {
+export function cosineSimilarity(vec1, vec2) {
   if (!vec1 || !vec2 || vec1.length === 0 || vec2.length === 0) {
     return 0;
   }
@@ -57,7 +57,7 @@ function cosineSimilarity(vec1, vec2) {
  * @returns {Array<Object>} Top-k documents sorted by similarity (descending)
  *   Each item: { ...document, similarity: number }
  */
-function getTopKDocuments(documents, queryEmbedding, k = 3) {
+export function getTopKDocuments(documents, queryEmbedding, k = 3) {
   if (!documents || documents.length === 0) {
     return [];
   }
@@ -78,7 +78,7 @@ function getTopKDocuments(documents, queryEmbedding, k = 3) {
     .slice(0, k);
 }
 
-module.exports = {
+export default {
   cosineSimilarity,
   getTopKDocuments,
 };
