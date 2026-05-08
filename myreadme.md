@@ -494,7 +494,7 @@ Return: {
    - Attach metadata to each chunk
 
 4. **Generate Embeddings**
-   - Use Gemini embedding-001 model
+   - Use Gemini gemini-embedding-2 model
    - 768-dimensional vectors
    - Batch processing for efficiency
 
@@ -522,7 +522,7 @@ curl http://localhost:3000/process/stats
 
 ### Gemini Embedding Model
 
-- **Model ID**: `embedding-001`
+- **Model ID**: `gemini-embedding-2`
 - **Dimension**: 768
 - **Max Input**: 3000 characters per chunk
 - **Rate Limiting**: Batch processing to avoid hitting limits

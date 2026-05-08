@@ -3,6 +3,20 @@
  * Splits text into overlapping chunks for RAG pipeline
  */
 
+const validateChunkOptions = (chunkSize, overlapSize) => {
+  if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+    throw new Error('chunkSize must be a positive integer');
+  }
+
+  if (!Number.isInteger(overlapSize) || overlapSize < 0) {
+    throw new Error('overlapSize must be a non-negative integer');
+  }
+
+  if (overlapSize >= chunkSize) {
+    throw new Error('overlapSize must be smaller than chunkSize');
+  }
+};
+
 /**
  * Split text into chunks by word count with overlap
  *
@@ -16,6 +30,8 @@ export const chunkTextByWords = (text, chunkSize = 500, overlapSize = 50) => {
     throw new Error('Text must be a non-empty string');
   }
 
+  validateChunkOptions(chunkSize, overlapSize);
+
   // Split text into words
   const words = text.split(/\s+/).filter((word) => word.length > 0);
 
@@ -25,6 +41,7 @@ export const chunkTextByWords = (text, chunkSize = 500, overlapSize = 50) => {
 
   const chunks = [];
   let startIndex = 0;
+  const stepSize = chunkSize - overlapSize;
 
   while (startIndex < words.length) {
     const endIndex = Math.min(startIndex + chunkSize, words.length);
@@ -32,13 +49,12 @@ export const chunkTextByWords = (text, chunkSize = 500, overlapSize = 50) => {
 
     chunks.push(chunk);
 
-    // Move start index for next chunk (with overlap)
-    startIndex = endIndex - overlapSize;
-
-    // Prevent infinite loop
-    if (startIndex <= 0) {
+    if (endIndex === words.length) {
       break;
     }
+
+    // Move start index for next chunk (with overlap)
+    startIndex += stepSize;
   }
 
   return chunks;
@@ -61,8 +77,11 @@ export const chunkTextByCharacters = (
     throw new Error('Text must be a non-empty string');
   }
 
+  validateChunkOptions(chunkSize, overlapSize);
+
   const chunks = [];
   let startIndex = 0;
+  const stepSize = chunkSize - overlapSize;
 
   while (startIndex < text.length) {
     const endIndex = Math.min(startIndex + chunkSize, text.length);
@@ -70,14 +89,12 @@ export const chunkTextByCharacters = (
 
     chunks.push(chunk);
 
-    // Move start index for next chunk (with overlap)
-    startIndex = endIndex - overlapSize;
-
-    // Prevent infinite loop
-    if (startIndex <= 0 || chunks.length > 10000) {
-      // Safety limit
+    if (endIndex === text.length) {
       break;
     }
+
+    // Move start index for next chunk (with overlap)
+    startIndex += stepSize;
   }
 
   return chunks;

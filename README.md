@@ -357,7 +357,7 @@ Response (200 OK):
 
 **Embedding Model:**
 
-- **Model**: Google Gemini `embedding-001`
+- **Model**: Google Gemini `gemini-embedding-2`
 - **Dimension**: 768 dimensions per embedding
 - **Purpose**: Captures semantic meaning of text for similarity search
 

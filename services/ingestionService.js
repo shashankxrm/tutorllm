@@ -1,5 +1,5 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import env from '../config/env.js';
 import { splitDocumentIntoChunks } from '../utils/chunking.js';
@@ -65,20 +65,24 @@ const fetchFileFromS3 = async (fileKey) => {
  * @throws {Error} - If PDF parsing fails
  */
 const extractTextFromPDF = async (pdfBuffer) => {
+  const parser = new PDFParse({ data: pdfBuffer });
+
   try {
     console.log('Extracting text from PDF...');
 
-    const pdfData = await pdfParse(pdfBuffer);
+    const pdfData = await parser.getText({ pageJoiner: '\n\n' });
     const text = pdfData.text;
 
     console.log(
-      `✓ Text extracted: ${text.length} characters, ${pdfData.numpages} pages`
+      `✓ Text extracted: ${text.length} characters, ${pdfData.total} pages`
     );
 
     return text;
   } catch (error) {
     console.error(`Failed to extract text from PDF: ${error.message}`);
     throw new Error(`PDF extraction error: ${error.message}`);
+  } finally {
+    await parser.destroy();
   }
 };
 
@@ -94,7 +98,7 @@ const generateEmbeddings = async (texts) => {
     console.log(`Generating embeddings for ${texts.length} chunks...`);
 
     const model = genAI.getGenerativeModel({
-      model: 'embedding-001',
+      model: 'gemini-embedding-2', // Use the latest embedding model
     });
 
     const embeddings = [];
