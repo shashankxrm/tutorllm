@@ -1027,6 +1027,204 @@ Follow these steps in order to see the full RAG pipeline:
 
 ---
 
+## Dockerization
+
+### Overview
+
+Docker containerizes the AI Study Assistant backend, enabling consistent deployment across development, testing, and production environments. The container includes all dependencies, environment configurations, and startup scripts.
+
+**Why Docker?**
+- **Consistency**: Identical environment across all machines
+- **Portability**: Run anywhere Docker is installed
+- **Isolation**: No dependency conflicts with host system
+- **Scalability**: Easy to deploy multiple instances
+- **CI/CD Ready**: Seamless integration with deployment pipelines
+
+### Prerequisites
+
+- Docker installed on your system ([Download Docker](https://www.docker.com/products/docker-desktop))
+- Basic Docker CLI knowledge (optional but helpful)
+
+### Building the Docker Image
+
+Build the image with:
+
+```bash
+docker build -t ai-study-assistant .
+```
+
+**What this does:**
+1. Uses Node.js 20 Alpine image as base (lightweight)
+2. Sets working directory to `/app`
+3. Installs production dependencies only
+4. Includes health checks
+5. Exposes port 3000 (or custom via `PORT` env var)
+
+### Running the Container
+
+#### Basic Run
+
+```bash
+docker run -p 3000:3000 --env-file .env ai-study-assistant
+```
+
+**Explanation:**
+- `-p 3000:3000`: Maps host port 3000 to container port 3000
+- `--env-file .env`: Loads environment variables from `.env` file
+- `ai-study-assistant`: Image name
+
+#### With Custom Environment Variables
+
+```bash
+docker run -p 3000:3000 \
+  -e PORT=3000 \
+  -e NODE_ENV=production \
+  -e GEMINI_API_KEY=your_key_here \
+  -e AWS_ACCESS_KEY=your_key_here \
+  -e AWS_SECRET_KEY=your_key_here \
+  -e AWS_REGION=ap-southeast-2 \
+  -e S3_BUCKET_NAME=your_bucket_name \
+  ai-study-assistant
+```
+
+#### Run in Background
+
+```bash
+docker run -d -p 3000:3000 --env-file .env --name ai-assistant ai-study-assistant
+```
+
+**Explanation:**
+- `-d`: Run in detached mode (background)
+- `--name ai-assistant`: Assigns a friendly container name
+
+### Managing the Container
+
+**View running containers:**
+```bash
+docker ps
+```
+
+**View container logs:**
+```bash
+docker logs ai-assistant
+```
+
+**Follow live logs:**
+```bash
+docker logs -f ai-assistant
+```
+
+**Stop the container:**
+```bash
+docker stop ai-assistant
+```
+
+**Remove the container:**
+```bash
+docker rm ai-assistant
+```
+
+**Remove the image:**
+```bash
+docker rmi ai-study-assistant
+```
+
+### Environment Variables in Docker
+
+The container requires the following environment variables (use your `.env` file or pass via `-e`):
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `PORT` | Server port (default: 3000) | No |
+| `NODE_ENV` | Environment mode (development/production) | No |
+| `GEMINI_API_KEY` | Google Gemini API key for embeddings & LLM | Yes |
+| `AWS_ACCESS_KEY` | AWS IAM access key for S3 | Yes |
+| `AWS_SECRET_KEY` | AWS IAM secret key for S3 | Yes |
+| `AWS_REGION` | AWS region (default: us-east-1) | No |
+| `S3_BUCKET_NAME` | S3 bucket name for file storage | Yes |
+
+### Testing the Container
+
+After starting the container, verify it's working:
+
+**Check health:**
+```bash
+curl http://localhost:3000/
+```
+
+**Test upload endpoint:**
+```bash
+curl -X POST http://localhost:3000/upload \
+  -F "file=@path/to/test.pdf"
+```
+
+**Check vector store stats:**
+```bash
+curl http://localhost:3000/query/stats
+```
+
+### Docker Compose (Optional)
+
+For local development with docker-compose, create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  ai-assistant:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+```
+
+Run with:
+```bash
+docker-compose up -d
+```
+
+### Production Considerations
+
+1. **Security**:
+   - Never hardcode secrets; use environment variables
+   - Use Docker secrets in production (Swarm/Kubernetes)
+   - Scan image for vulnerabilities: `docker scan ai-study-assistant`
+
+2. **Performance**:
+   - Use Alpine base image for smaller image size
+   - Set resource limits: `docker run --memory=512m --cpus=1 ...`
+
+3. **Monitoring**:
+   - Enable health checks (included in Dockerfile)
+   - Use `docker stats` to monitor resource usage
+   - Set up centralized logging
+
+4. **Scaling**:
+   - Use Kubernetes or Docker Swarm for orchestration
+   - Load balance multiple container instances
+   - Use managed services (AWS ECS, Google Cloud Run)
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `Cannot connect to port 3000` | Verify port is exposed: `docker run -p 3000:3000 ...` |
+| `Environment variables not loaded` | Ensure `.env` exists and use `--env-file .env` |
+| `Container exits immediately` | Check logs: `docker logs container_id` |
+| `Permission denied on S3` | Verify AWS credentials and IAM permissions |
+| `Out of memory` | Increase Docker memory limit in Docker Desktop settings |
+
+---
+
 ## Contact & Support
 
 **Have questions?** We're here to help!
